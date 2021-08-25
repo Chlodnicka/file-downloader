@@ -27,7 +27,15 @@ final class FileDownloaderService
     {
         try {
             $connectorConfiguration = $this->connectionConfigurations->get($id);
-            $content = $this->downloader->download($connectorConfiguration);
+            $downloadOutput = $this->downloader->download($connectorConfiguration);
+            if ($downloadOutput->hasFailed()) {
+                //if warning
+                //then update failure counter and status
+                //if blocked
+                //then update failure counter, status, remove checksum, last downloaded and file from storage
+                return false;
+            }
+            $content = $downloadOutput->getContent();
             $download = Download::createFromContent($content);
             $contentHasChanged = !$download->isEqual($connectorConfiguration->getLastDownload());
             if ($contentHasChanged) {

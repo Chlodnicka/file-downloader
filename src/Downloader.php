@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FileDownloader;
 
+use Exception;
 use FileDownloader\ValueObject\ConnectionConfigurationish;
 use RuntimeException;
 
@@ -17,11 +18,21 @@ final class Downloader
         $this->connectors = $connectors;
     }
 
-    public function download(ConnectionConfigurationish $connectionConfiguration): string
+    public function download(ConnectionConfigurationish $connectionConfiguration): DownloadOutput
     {
+        $downloadOutput = new DownloadOutput(
+            $connectionConfiguration->getFailureCounter(),
+            $connectionConfiguration->getStatusish()
+        );
+
         foreach ($this->connectors as $connector) {
             if ($connector->supports($connectionConfiguration)) {
-                return $connector->download($connectionConfiguration);
+                try {
+                    $downloadOutput->setContent($connector->download($connectionConfiguration));
+                } catch (Exception $e) {
+                    $downloadOutput->addFailure();
+                }
+                return $downloadOutput;
             }
         }
 
