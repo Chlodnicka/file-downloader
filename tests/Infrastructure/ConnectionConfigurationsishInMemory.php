@@ -24,15 +24,7 @@ final class ConnectionConfigurationsishInMemory implements ConnectionConfigurati
         if (!isset($this->memory[$id])) {
             throw new RuntimeException('No configuration provided');
         }
-        $payload = $this->memory[$id];
-        return new ConnectionConfigurationish(
-            $payload['id'],
-            $payload['supplier_id'],
-            $payload['connection_configuration'],
-            $payload['file_extension'],
-            $payload['checksum'],
-            $payload['last_downloaded_at']
-        );
+        return ConnectionConfigurationish::createFromArray($this->memory[$id]);
     }
 
     public function updateLastDownload(int $id, Download $lastDownload): void
