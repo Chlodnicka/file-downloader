@@ -45,5 +45,8 @@
             "@stan",
             "@cs"
         ]
+    },
+    "require": {
+        "myclabs/php-enum": "^1.8"
     }
 }
