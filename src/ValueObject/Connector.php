@@ -5,16 +5,17 @@ declare(strict_types=1);
 namespace FileDownloader\ValueObject;
 
 use DateTimeImmutable;
-use FileDownloader\ConnectorStatusish;
+use FileDownloader\ConnectorStatus;
+use FileDownloader\Download;
 use FileDownloader\SharedKernel\DateTimeHelper;
 
-final class ConnectionConfigurationish
+final class Connector
 {
     private int $id;
     private int $supplierId;
-    private array $connectionConfiguration;
+    private array $configuration;
     private string $fileExtension;
-    private ConnectorStatusish $statusish;
+    private ConnectorStatus $status;
     private int $failureCounter;
     private ?string $checksum;
     private ?DateTimeImmutable $lastDownloadedAt;
@@ -25,23 +26,23 @@ final class ConnectionConfigurationish
         array $connectionConfiguration,
         string $fileExtension,
         int $failureCounter,
-        string $statusish,
+        string $status,
         ?string $checksum,
         ?string $lastDownloadedAt
     ) {
         $this->id = $id;
         $this->supplierId = $supplierId;
-        $this->connectionConfiguration = $connectionConfiguration;
+        $this->configuration = $connectionConfiguration;
         $this->fileExtension = $fileExtension;
-        $this->statusish = ConnectorStatusish::from($statusish);
+        $this->status = ConnectorStatus::from($status);
         $this->failureCounter = $failureCounter;
         $this->checksum = $checksum;
         $this->lastDownloadedAt = $lastDownloadedAt ? DateTimeHelper::create($lastDownloadedAt) : null;
     }
 
-    public static function createFromArray(array $payload): ConnectionConfigurationish
+    public static function createFromArray(array $payload): Connector
     {
-        return new ConnectionConfigurationish(
+        return new Connector(
             $payload['id'],
             $payload['supplier_id'],
             $payload['connection_configuration'],
@@ -68,24 +69,18 @@ final class ConnectionConfigurationish
         return $this->fileExtension;
     }
 
-    public function getConnectionConfiguration(): array
+    public function getConfiguration(): array
     {
-        return $this->connectionConfiguration;
+        return $this->configuration;
     }
 
-    public function getStatusish(): ConnectorStatusish
+    public function initializeDownload(): Download
     {
-        return $this->statusish;
-    }
-
-    public function getFailureCounter(): int
-    {
-        return $this->failureCounter;
-    }
-
-    public function getLastDownload(): ?Download
-    {
-        return $this->checksum && $this->lastDownloadedAt ?
-            new Download($this->checksum, $this->lastDownloadedAt) : null;
+        return new Download(
+            $this->status,
+            $this->failureCounter,
+            $this->checksum,
+            $this->lastDownloadedAt
+        );
     }
 }

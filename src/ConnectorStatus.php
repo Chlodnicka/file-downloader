@@ -6,7 +6,7 @@ namespace FileDownloader;
 
 use MyCLabs\Enum\Enum;
 
-final class ConnectorStatusish extends Enum
+final class ConnectorStatus extends Enum
 {
     private const OK = 'OK';
     private const WARNING = 'WARNING';
@@ -14,16 +14,16 @@ final class ConnectorStatusish extends Enum
 
     public static function OK(): self
     {
-        return new ConnectorStatusish(self::OK);
+        return new ConnectorStatus(self::OK);
     }
 
     public static function WARNING(): self
     {
-        return new ConnectorStatusish(self::WARNING);
+        return new ConnectorStatus(self::WARNING);
     }
 
     public static function BLOCKED(): self
     {
-        return new ConnectorStatusish(self::BLOCKED);
+        return new ConnectorStatus(self::BLOCKED);
     }
 }

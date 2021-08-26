@@ -5,34 +5,30 @@ declare(strict_types=1);
 namespace FileDownloader;
 
 use Exception;
-use FileDownloader\ValueObject\ConnectionConfigurationish;
+use FileDownloader\ValueObject\Connector;
 use RuntimeException;
 
 final class Downloader
 {
-    /** @var Connector[] */
-    private array $connectors;
+    /** @var ConnectorHandler[] */
+    private array $connectorHandlers;
 
-    public function __construct(Connector ...$connectors)
+    public function __construct(ConnectorHandler ...$connectorHandlers)
     {
-        $this->connectors = $connectors;
+        $this->connectorHandlers = $connectorHandlers;
     }
 
-    public function download(ConnectionConfigurationish $connectionConfiguration): DownloadOutput
+    public function download(Connector $connector): Download
     {
-        $downloadOutput = new DownloadOutput(
-            $connectionConfiguration->getFailureCounter(),
-            $connectionConfiguration->getStatusish()
-        );
-
-        foreach ($this->connectors as $connector) {
-            if ($connector->supports($connectionConfiguration)) {
+        foreach ($this->connectorHandlers as $connectorHandler) {
+            if ($connectorHandler->supports($connector)) {
+                $download = $connector->initializeDownload();
                 try {
-                    $downloadOutput->setContent($connector->download($connectionConfiguration));
+                    $download->markAsSuccess($connectorHandler->download($connector));
                 } catch (Exception $e) {
-                    $downloadOutput->addFailure();
+                    $download->addFailure();
                 }
-                return $downloadOutput;
+                return $download;
             }
         }
 
