@@ -2,13 +2,13 @@
 
 namespace FileDownloader\Tests;
 
-use FileDownloader\ConnectorStatusish;
 use FileDownloader\Downloader;
-use FileDownloader\Tests\Fixture\ConfigurationPayloadFixture;
-use FileDownloader\Tests\Infrastructure\Connector\TestConnector;
-use FileDownloader\Tests\Infrastructure\Connector\ThrowingErrorConnector;
-use FileDownloader\ValueObject\ConnectionConfigurationish;
+use FileDownloader\Tests\Fixture\ConnectorPayloadFixture;
+use FileDownloader\Tests\Infrastructure\ConnectorHandler\TestConnectorHandler;
+use FileDownloader\Tests\Infrastructure\ConnectorHandler\ThrowingErrorConnectorHandler;
+use FileDownloader\ValueObject\Connector;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 /**
  * @covers \FileDownloader\Downloader
@@ -18,46 +18,63 @@ class DownloaderTest extends TestCase
     public function testShouldDownloadFileContent(): void
     {
         // Given
-        $connectionConfigurationPayload = ConfigurationPayloadFixture::aBlahThatHasBeenDownloaded();
-        $connectionConfiguration = ConnectionConfigurationish::createFromArray($connectionConfigurationPayload);
+        $connectionConfigurationPayload = ConnectorPayloadFixture::aConnectorThatHasBeenDownloaded();
+        $connectionConfiguration = Connector::createFromArray($connectionConfigurationPayload);
         $expectedContent = 'content';
-        $downloader = new Downloader(new TestConnector($expectedContent));
+        $downloader = new Downloader(new TestConnectorHandler($expectedContent));
 
         // When
         $downloaderOutput = $downloader->download($connectionConfiguration);
 
         // Then
-        self::assertSame($expectedContent, $downloaderOutput->getContent());
+        self::assertTrue($downloaderOutput->hasChanged());
+        self::assertSame($expectedContent, $downloaderOutput->getContent()->getValue());
+        self::assertFalse($downloaderOutput->isBlocked());
     }
 
     public function testShouldIncrementFailureCountAndMarkConnectorAsWarningWhenFileCannotBeDownloaded(): void
     {
         // Given
-        $connectionConfigurationPayload = ConfigurationPayloadFixture::aBlahThatHasBeenDownloaded();
-        $connectionConfiguration = ConnectionConfigurationish::createFromArray($connectionConfigurationPayload);
-        $downloader = new Downloader(new ThrowingErrorConnector());
+        $connectionConfigurationPayload = ConnectorPayloadFixture::aConnectorThatHasBeenDownloaded();
+        $connectionConfiguration = Connector::createFromArray($connectionConfigurationPayload);
+        $downloader = new Downloader(new ThrowingErrorConnectorHandler());
 
         // When
         $downloaderOutput = $downloader->download($connectionConfiguration);
 
         // Then
-        self::assertTrue($downloaderOutput->hasFailed());
-        self::assertSame(1, $downloaderOutput->getFailureCounter());
-        self::assertTrue(ConnectorStatusish::WARNING()->equals($downloaderOutput->getConnectorStatusish()));
+        self::assertFalse($downloaderOutput->hasChanged());
+        self::assertFalse($downloaderOutput->isBlocked());
+        self::assertNull($downloaderOutput->getContent());
     }
 
     public function testShouldIncrementFailureCountAndMarkConnectorAsBlockedWhenFileCannotBeDownloaded(): void
     {
-        $connectionConfigurationPayload = ConfigurationPayloadFixture::aBlahThatHasWarning();
-        $connectionConfiguration = ConnectionConfigurationish::createFromArray($connectionConfigurationPayload);
-        $downloader = new Downloader(new ThrowingErrorConnector());
+        // Given
+        $connectionConfigurationPayload = ConnectorPayloadFixture::aBlahThatHasWarning();
+        $connectionConfiguration = Connector::createFromArray($connectionConfigurationPayload);
+        $downloader = new Downloader(new ThrowingErrorConnectorHandler());
 
         // When
         $downloaderOutput = $downloader->download($connectionConfiguration);
 
         // Then
-        self::assertTrue($downloaderOutput->hasFailed());
-        self::assertSame(5, $downloaderOutput->getFailureCounter());
-        self::assertTrue(ConnectorStatusish::BLOCKED()->equals($downloaderOutput->getConnectorStatusish()));
+        self::assertFalse($downloaderOutput->hasChanged());
+        self::assertTrue($downloaderOutput->isBlocked());
+        self::assertNull($downloaderOutput->getContent());
+    }
+
+    public function testShouldThrowExceptionBecauseConnectorIsNotSupported(): void
+    {
+        // Given
+        $connectionConfigurationPayload = ConnectorPayloadFixture::aConnectorThatHasBeenDownloaded();
+        $connectionConfiguration = Connector::createFromArray($connectionConfigurationPayload);
+        $downloader = new Downloader();
+
+        // Expect
+        $this->expectException(RuntimeException::class);
+
+        // When
+        $downloader->download($connectionConfiguration);
     }
 }

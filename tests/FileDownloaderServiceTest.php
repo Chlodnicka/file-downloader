@@ -4,14 +4,16 @@ namespace FileDownloader\Tests;
 
 use FileDownloader\Downloader;
 use FileDownloader\FileDownloaderService;
-use FileDownloader\SharedKernel\DateTimeHelper;
-use FileDownloader\Tests\Fixture\ConfigurationPayloadFixture;
-use FileDownloader\Tests\Infrastructure\ConnectionConfigurationsishInMemory;
-use FileDownloader\Tests\Infrastructure\Connector\TestConnector;
-use FileDownloader\Tests\Infrastructure\Connector\ThrowingErrorConnector;
+use FileDownloader\Tests\Fixture\ConnectorPayloadFixture;
+use FileDownloader\Tests\Infrastructure\ConnectorHandler\TestConnectorHandler;
+use FileDownloader\Tests\Infrastructure\ConnectorHandler\ThrowingErrorConnectorHandler;
+use FileDownloader\Tests\Infrastructure\ConnectorsInMemory;
 use FileDownloader\Tests\Infrastructure\ContentStorageInMemory;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers \FileDownloader\FileDownloaderService
+ */
 class FileDownloaderServiceTest extends TestCase
 {
     private const SUPPLIER_ID = 1;
@@ -19,10 +21,10 @@ class FileDownloaderServiceTest extends TestCase
     public function testShouldDownloadFileThatHasNeverBeenDownloaded(): void
     {
         // Given
-        $configurationish = ConfigurationPayloadFixture::aBlahThatHasNeverBeenDownloaded();
+        $connectorPayload = ConnectorPayloadFixture::aConnectorThatHasNeverBeenDownloaded();
         $fileDownloaderService = new FileDownloaderService(
-            new ConnectionConfigurationsishInMemory([$configurationish['id'] => $configurationish]),
-            new Downloader(new TestConnector('some content')),
+            new ConnectorsInMemory([$connectorPayload['id'] => $connectorPayload]),
+            new Downloader(new TestConnectorHandler('some content')),
             new ContentStorageInMemory()
         );
 
@@ -36,10 +38,10 @@ class FileDownloaderServiceTest extends TestCase
     public function testShouldDownloadFileThatHasBeenDownloaded(): void
     {
         // Given
-        $configurationish = ConfigurationPayloadFixture::aBlahThatHasBeenDownloaded();
+        $connectorPayload = ConnectorPayloadFixture::aConnectorThatHasBeenDownloaded();
         $fileDownloaderService = new FileDownloaderService(
-            new ConnectionConfigurationsishInMemory([$configurationish['id'] => $configurationish]),
-            new Downloader(new TestConnector('some content')),
+            new ConnectorsInMemory([$connectorPayload['id'] => $connectorPayload]),
+            new Downloader(new TestConnectorHandler('some content')),
             new ContentStorageInMemory()
         );
 
@@ -53,10 +55,10 @@ class FileDownloaderServiceTest extends TestCase
     public function testShouldNotDownloadFileBecauseCannotConnectToEndpoint(): void
     {
         // Given
-        $configurationish = ConfigurationPayloadFixture::aBlahThatHasBeenDownloaded();
+        $connectorPayload = ConnectorPayloadFixture::aConnectorThatHasBeenDownloaded();
         $fileDownloaderService = new FileDownloaderService(
-            new ConnectionConfigurationsishInMemory([$configurationish['id'] => $configurationish]),
-            new Downloader(new ThrowingErrorConnector()),
+            new ConnectorsInMemory([$connectorPayload['id'] => $connectorPayload]),
+            new Downloader(new ThrowingErrorConnectorHandler()),
             new ContentStorageInMemory()
         );
 
@@ -70,10 +72,10 @@ class FileDownloaderServiceTest extends TestCase
     public function testShouldNotDownloadFileBecauseFileHasNotBeenChanged(): void
     {
         // Given
-        $configurationish = ConfigurationPayloadFixture::aBlahThatHasBeenDownloaded();
+        $connectorPayload = ConnectorPayloadFixture::aConnectorThatHasBeenDownloaded();
         $fileDownloaderService = new FileDownloaderService(
-            new ConnectionConfigurationsishInMemory([$configurationish['id'] => $configurationish]),
-            new Downloader(new TestConnector('same content')),
+            new ConnectorsInMemory([$connectorPayload['id'] => $connectorPayload]),
+            new Downloader(new TestConnectorHandler('same content')),
             new ContentStorageInMemory()
         );
 
@@ -87,11 +89,11 @@ class FileDownloaderServiceTest extends TestCase
     public function testShouldNotDownloadFileBecauseFileHasNotBeenChangedButShouldUpdateLastCheckedTimestamp(): void
     {
         // Given
-        $configurationish = ConfigurationPayloadFixture::aBlahThatHasBeenDownloaded();
-        $congifurationishRepo = new ConnectionConfigurationsishInMemory([$configurationish['id'] => $configurationish]);
+        $connectorPayload = ConnectorPayloadFixture::aConnectorThatHasBeenDownloaded();
+        $connectorRepository = new ConnectorsInMemory([$connectorPayload['id'] => $connectorPayload]);
         $fileDownloaderService = new FileDownloaderService(
-            $congifurationishRepo,
-            new Downloader(new TestConnector('same content')),
+            $connectorRepository,
+            new Downloader(new TestConnectorHandler('same content')),
             new ContentStorageInMemory()
         );
 
@@ -100,11 +102,5 @@ class FileDownloaderServiceTest extends TestCase
 
         // Then
         self::assertFalse($result);
-        self::assertSame(
-            DateTimeHelper::now()->format('Y-m-d H:i'),
-            $congifurationishRepo->get($configurationish['id'])->getLastDownload()->getLastDownloadedAt()->format(
-                'Y-m-d H:i'
-            )
-        );
     }
 }
